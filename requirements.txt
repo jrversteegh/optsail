@@ -1,0 +1,12 @@
+GDAL
+numpy
+scipy
+python-dateutil
+matplotlib
+appdirs
+
+# For testing
+pytest
+flake8
+objgraph
+git+https://github.com/jrversteegh/geofun.git
