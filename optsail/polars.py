@@ -17,8 +17,8 @@ from scipy import interpolate
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from classes import Object
-from utils import from_knots, from_degs, to_knots, to_degs, to_float
+from .classes import Object
+from .utils import from_knots, from_degs, to_knots, to_degs, to_float
 
 
 class Polars(Object):
