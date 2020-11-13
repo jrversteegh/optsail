@@ -7,7 +7,7 @@ __author__ = "J.R. Versteegh"
 __copyright__ = "2013, Orca Software"
 __contact__ = "j.r.versteegh@orca-st.com"
 __version__ = "0.1"
-__license__ = "Proprietary. All use without explicit permission forbidden"
+__license__ = "GPL"
 
 import logging
 from datetime import datetime, timedelta, date, time
@@ -20,6 +20,7 @@ class Object(object):
     '''Base class with generic constructor'''
     # Define slot to avoid dictionary creation
     __slots__ = []
+
     def __init__(self, *args, **kwargs):
         super(Object, self).__init__()
 
@@ -48,6 +49,7 @@ _timekeys = ('hour', 'minute', 'second', 'microsecond', 'tzinfo')
 _tzlocal = tzone.tzlocal()
 _tzutc = tzone.tzutc()
 
+
 class DateTime(datetime):
     """
     Extension of datetime that supports copy construction and construction from string
@@ -60,7 +62,7 @@ class DateTime(datetime):
         Keyword arguments override values retrieved from args[0]
 
         Arguments:
-        0 -- another DateTime or datetime object to copy construct from. 
+        0 -- another DateTime or datetime object to copy construct from.
           -- a timedelta object indicating an offset from "now".
           -- a string value to parse the date and time from. See
              dateutil.parser for valid strings
@@ -72,7 +74,7 @@ class DateTime(datetime):
         Keyword arguments:
         year    -- two or four digit year
         month   -- two or four digit year (defaults to 0)
-        day     -- day of month 
+        day     -- day of month
         hour    -- hour of the day
         minute  -- minute of the hour
         second  -- second of the minute
@@ -83,7 +85,7 @@ class DateTime(datetime):
         if 'tzinfo' in kwargs:
             tz = kwargs['tzinfo']
         else:
-            tz = _tzlocal;
+            tz = _tzlocal
 
         def get_zero():
             return datetime.fromtimestamp(0, tz=tz)
@@ -146,11 +148,11 @@ class DateTime(datetime):
             pass
 
         for k in _datekeys:
-            if not k in kwargs: 
+            if k not in kwargs:
                 kwargs[k] = getattr(init, k)
         try:
             for k in _timekeys:
-                if not k in kwargs: 
+                if k not in kwargs:
                     kwargs[k] = getattr(init, k)
         except AttributeError:
             pass
@@ -167,7 +169,7 @@ class DateTime(datetime):
         except KeyError:
             pass
 
-        if not 'tzinfo' in kwargs or kwargs['tzinfo'] is None:
+        if 'tzinfo' not in kwargs or kwargs['tzinfo'] is None:
             kwargs['tzinfo'] = tz
 
         # Call datetime's constructor with appropriately setup kwargs
@@ -183,7 +185,7 @@ class DateTime(datetime):
         return type(self), (self.year, self.month, self.day,
                             self.hour, self.minute, self.second,
                             self.microsecond, self.tzinfo)
- 
+
 
     def __eq__(self, other):
         return super(DateTime, self).__eq__(DateTime(other))
@@ -203,7 +205,7 @@ class DateTime(datetime):
 
     def __ge__(self, other):
         return super(DateTime, self).__ge__(DateTime(other))
-    
+
 
     def __ne__(self, other):
         return super(DateTime, self).__ne__(DateTime(other))
@@ -245,5 +247,3 @@ class DateTime(datetime):
 
     def date(self):
         return DateTime(datetime.date(self))
-
-

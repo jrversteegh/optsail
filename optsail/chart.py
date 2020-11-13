@@ -7,14 +7,13 @@ __author__ = "J.R. Versteegh"
 __copyright__ = "2015, Orca Software"
 __contact__ = "j.r.versteegh@orca-st.com"
 __version__ = "0.1"
-__license__ = "Proprietary. All use without explicit permission forbidden"
+__license__ = "GPL"
 
 import os
 from datetime import datetime
 
 import numpy as np
 
-from .utils import to_degs
 
 try:
     from osgeo import ogr
@@ -22,8 +21,9 @@ except ImportError:
     ogr = None
 
 
-from .classes import Object, Logable
+from .classes import Logable
 from .data import get_data_dir
+
 
 class LandPolygons(Logable):
     _land_polygon_driver = None
@@ -60,9 +60,7 @@ class LandPolygons(Logable):
         return self._get_layer(self.log)
 
 
-
 land_polygons = LandPolygons()
-
 
 
 class Chart(Logable):
@@ -106,12 +104,12 @@ class Chart(Logable):
             hull = geom.ConvexHull()
             layer.SetSpatialFilter(hull)
             for feature in layer:
-               feature_geom = feature.GetGeometryRef()
-               for i, line in enumerate(lines):
-                   geom = ogr.Geometry(ogr.wkbLineString)
-                   geom.AddPoint(line.p1.lon, line.p1.lat)
-                   geom.AddPoint(line.p2.lon, line.p2.lat)
-                   if geom.Intersects(feature_geom):
-                       result[i] = False
+                feature_geom = feature.GetGeometryRef()
+                for i, line in enumerate(lines):
+                    geom = ogr.Geometry(ogr.wkbLineString)
+                    geom.AddPoint(line.p1.lon, line.p1.lat)
+                    geom.AddPoint(line.p2.lon, line.p2.lat)
+                    if geom.Intersects(feature_geom):
+                        result[i] = False
 
         return result

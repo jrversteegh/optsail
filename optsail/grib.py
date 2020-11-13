@@ -7,14 +7,13 @@ __author__ = "J.R. Versteegh"
 __copyright__ = "2013, Orca Software"
 __contact__ = "j.r.versteegh@orca-st.com"
 __version__ = "0.1"
-__license__ = "Proprietary. All use without explicit permission forbidden"
-
+__license__ = "GPL"
 
 import os
 import glob
 import math
 import bisect
-from datetime import datetime, timedelta, tzinfo
+from datetime import timedelta
 from dateutil import tz
 import numpy as np
 from scipy import interpolate
@@ -22,14 +21,13 @@ import gdal
 import gdalconst
 import appdirs
 
-import matplotlib as mpl
 try:
-  import matplotlib.pyplot as plt
-except:
-  pass
+    import matplotlib.pyplot as plt
+except ImportError:
+    pass
 
-from .classes import Object, Logable, DateTime
-from .utils import *
+from .classes import Object, DateTime
+from .utils import from_degs
 from .environment import Environment
 
 # Prefer exceptions over logging to stderr in gdal library
@@ -112,7 +110,7 @@ class Grib(Environment):
         super(Grib, self).__init__(*args, **kwargs)
         self._fileset = []
         if 'fileset' in kwargs:
-            self._fileset = kwargs['fileset'] 
+            self._fileset = kwargs['fileset']
         elif 'filename' in kwargs:
             self._fileset.append(kwargs['filename'])
         if 'no_data_value' in kwargs:
@@ -147,14 +145,14 @@ class Grib(Environment):
             maxx += 2 * math.pi
             minx += 2 * math.pi
 
-        # Clip the mesh 
+        # Clip the mesh
         if self._clip is not None:
             lami, lama, lomi, loma = self._clip
             skipx = int((lomi - minx) / xstep) + 1 if lomi > minx else None
             trimx = int((loma - maxx) / xstep) - 1 if loma < maxx else None
             skipy = int((lami - miny) / ystep) + 1 if lami > miny else None
             trimy = int((lama - maxy) / ystep) - 1 if lama < maxy else None
-            self._clip_slice = (slice(skipy, trimy),slice(skipx, trimx))
+            self._clip_slice = (slice(skipy, trimy), slice(skipx, trimx))
             self.log.info('Clipping: %s' % str(self._clip_slice))
             if skipx:
                 minx += skipx * xstep
@@ -182,19 +180,19 @@ class Grib(Environment):
         if minx < 0:
             self._neglon = True
         else:
-            self._neglon = False 
+            self._neglon = False
 
-        self.log.info('Creating mesh: %s' % \
+        self.log.info('Creating mesh: %s' %
                       str((miny, maxy, ysize, minx, maxx, xsize)))
-        result = np.mgrid[miny:maxy:ysize*1j, minx:maxx:xsize*1j]
+        result = np.mgrid[miny:maxy:ysize * 1j, minx:maxx:xsize * 1j]
         self.log.info('Mesh shape: %s' % str(result.shape))
-        return result 
+        return result
 
 
     def _splinefunc_from_array(self, a):
-        xs = self._mesh[0][:,0]
-        ys = self._mesh[1][0,:]
-        # Check if the array contains interlaced data and setup slices to 
+        xs = self._mesh[0][:, 0]
+        ys = self._mesh[1][0, :]
+        # Check if the array contains interlaced data and setup slices to
         # filter out the rows and columns with "nodata"
         # ...typically 9999
         nodata = np.fabs(a) > 1000
@@ -204,19 +202,19 @@ class Grib(Environment):
             self.log.debug('Grib contains NODATA values')
             sx = np.s_[::1]
             sy = np.s_[::1]
-            if nodata[1::2,:].all():
+            if nodata[1::2, :].all():
                 interlaced = True
                 sx = np.s_[0::2]
                 self.log.info('Grib data is vertically interlaced from 1')
-            elif nodata[::2,:].all():
+            elif nodata[::2, :].all():
                 interlaced = True
                 sx = np.s_[1::2]
                 self.log.info('Grib data is vertically interlaced from 0')
-            if nodata[:,1::2].all():
+            if nodata[:, 1::2].all():
                 interlaced = True
                 sy = np.s_[0::2]
                 self.log.info('Grib data is horizontally interlaced from 1')
-            elif nodata[:,::2].all():
+            elif nodata[:, ::2].all():
                 interlaced = True
                 sy = np.s_[1::2]
                 self.log.info('Grib data is horizontally interlaced from 0')
@@ -227,10 +225,10 @@ class Grib(Environment):
                 self.log.debug('Antialiasing grib NODATA values')
                 stamp = np.zeros_like(a)
                 fa = 0.4
-                stamp[ 1:  , 1:  ]  += a[  :-1,  :-1]
-                stamp[ 1:  ,  :-1]  += a[  :-1, 1:  ]
-                stamp[  :-1, 1:  ]  += a[ 1:  ,  :-1]
-                stamp[  :-1,  :-1]  += a[ 1:  , 1:  ]
+                stamp[ 1:  , 1:  ]  += a[  :-1,  :-1]  # noqa
+                stamp[ 1:  ,  :-1]  += a[  :-1, 1:  ]  # noqa
+                stamp[  :-1, 1:  ]  += a[ 1:  ,  :-1]  # noqa
+                stamp[  :-1,  :-1]  += a[ 1:  , 1:  ]  # noqa
                 # Add the stamp to add with the nodata mask applied
                 a += fa * stamp * nodata
 
@@ -254,9 +252,9 @@ class Grib(Environment):
     def load_from_file_async(self, filename):
         self.log.info('Attempting to open: %s' % filename)
         data = gdal.Open(filename, gdalconst.GA_ReadOnly)
-        self.log.info('Opened: %s of Type: %s' % \
+        self.log.info('Opened: %s of Type: %s' %
                       (data.GetDescription(), data.GetDriver().LongName))
-        if not filename in self._fileset:
+        if filename not in self._fileset:
             self._fileset.append(filename)
 
         # Fetch or check the range and resolution of the data in the file
@@ -297,12 +295,12 @@ class Grib(Environment):
                     raise GribDataError('Presently only UTC timestamp is supported for time')
                 t = DateTime(float(ta[0]), tzinfo=_tzutc)
                 self.log.info('Layer time: %s' % str(t))
-                # For some reason the y (latitude) range is inverted. Flip it up so 
+                # For some reason the y (latitude) range is inverted. Flip it up so
                 # y values are increasing (required for interpolation)
                 a = np.flipud(b.ReadAsArray())
                 # When wrapped: repeat the first column at the end
                 if self._wrap:
-                    a = np.hstack((a, a[:,0][np.newaxis,:].T))
+                    a = np.hstack((a, a[:, 0][np.newaxis, :].T))
                 if self._clip is not None:
                     a = a[self._clip_slice]
                 f, n = self._splinefunc_from_array(a)
@@ -320,7 +318,7 @@ class Grib(Environment):
 
                 yield DateTime()
 
-        self.log.info('Read file. Range is now %s, %s, %s, %s and time span is %s, %s' % \
+        self.log.info('Read file. Range is now %s, %s, %s, %s and time span is %s, %s' %
                       (self.range + self.span))
 
 
@@ -345,7 +343,7 @@ class Grib(Environment):
         now = DateTime()
         threshold = now - older_than
         for layers in (self._wu, self._wv, self._cu, self._cv):
-            while layers: 
+            while layers:
                 t = layers[0][0]
                 if t < threshold:
                     self.log.info('Pruning layer 0 with t: %s' % str(t))
@@ -357,15 +355,15 @@ class Grib(Environment):
     def reset(self):
         self._origin_and_step = None   # Grib file mesh origin and step
         self._clip_slice = None        # Slice determined for clipping
-        self._mesh = None    # Full mesh with coordinates
-        self._wrap = False   # Whether wrapped around the earth
-        self._wu = []        # List with wind u data
-        self._wv = []        # List with wind v data
-        self._cu = []        # List with current u data
-        self._cv = []        # List with current v data
-        self._neglon = False # Whether grib contains negative longitudes
+        self._mesh = None     # Full mesh with coordinates
+        self._wrap = False    # Whether wrapped around the earth
+        self._wu = []         # List with wind u data
+        self._wv = []         # List with wind v data
+        self._cu = []         # List with current u data
+        self._cv = []         # List with current v data
+        self._neglon = False  # Whether grib contains negative longitudes
 
-    
+
     def _range_check(self, lats, lons):
         lami, lama, lomi, loma = self.range
         # Range check
@@ -376,10 +374,10 @@ class Grib(Environment):
         if self._no_data_value is None:
             # Raise an error on out of range domain value
             if latmin.any() or latmax.any():
-                raise GribRangeError('Latitude(s) out of range: %s' % \
+                raise GribRangeError('Latitude(s) out of range: %s' %
                                      np.compress(latmin + latmax, lats))
             if lonmin.any() or lonmax.any():
-                raise GribRangeError('Longitude(s) out of range: %s' % \
+                raise GribRangeError('Longitude(s) out of range: %s' %
                                      np.compress(lonmin + lonmax, lons))
         # Addition of bool arrays acts like boolean "or"
         return latmin + latmax + lonmin + lonmax
@@ -400,7 +398,7 @@ class Grib(Environment):
         times = [i[0] for i in layers]
         ps = np.asarray(positions)
         if ps.shape[0] != 2:
-            lats, lons = ps[:,0], ps[:,1]
+            lats, lons = ps[:, 0], ps[:, 1]
         else:
             lats, lons = ps[0], ps[1]
         negs = lons < 0
@@ -419,7 +417,7 @@ class Grib(Environment):
             raise GribSpanError('Time %s out of range %s - %s' % (time, first, last))
         t0 = times[ti - 1]
         t1 = times[ti]
-        tf = (time - t0).total_seconds() / (t1 - t0).total_seconds()  
+        tf = (time - t0).total_seconds() / (t1 - t0).total_seconds()
         return lats, lons, ti, tf
 
 
@@ -433,8 +431,8 @@ class Grib(Environment):
         """Implementation of Environment._get_wind"""
         lats, lons, ti, tf = self._parse_params(positions, time, self._wu)
         out_range = self._range_check(lats, lons)
-        u = self._time_interpol(self._wu,  ti, tf, lats, lons)
-        v = self._time_interpol(self._wv,  ti, tf, lats, lons)
+        u = self._time_interpol(self._wu, ti, tf, lats, lons)
+        v = self._time_interpol(self._wv, ti, tf, lats, lons)
         angles = np.arctan2(u, v) + math.pi
         speeds = np.sqrt(u * u + v * v)
         angles, speeds = self._apply_range(angles, speeds, out_range)
@@ -445,8 +443,8 @@ class Grib(Environment):
         """Implementation of Environment._get_current"""
         lats, lons, ti, tf = self._parse_params(positions, time, self._cu)
         out_range = self._range_check(lats, lons)
-        u = self._time_interpol(self._cu,  ti, tf, lats, lons)
-        v = self._time_interpol(self._cv,  ti, tf, lats, lons)
+        u = self._time_interpol(self._cu, ti, tf, lats, lons)
+        v = self._time_interpol(self._cv, ti, tf, lats, lons)
         angles = np.arctan2(u, v)
         # Arctan2 range is [-pi, pi) and we want [0, 2pi)
         angles += (angles < 0) * 2 * math.pi
@@ -501,13 +499,13 @@ class Grib(Environment):
         try:
             plt.savefig(filename)
         except NameError as e:
-            self.log.warning('MatplotLib not working')
+            self.log.warning('MatplotLib not working: %s' % e)
 
 
     def plot(self, t):
         self._plot(t)
         plt.show()
-        
+
 
 
 class LiveGrib(Grib):
@@ -539,12 +537,12 @@ class LiveGrib(Grib):
             yield action
         self._update_stamp()
 
-    
+
     def _update_update_file(self):
         if not self._update_file:
             self._update_file = self._update_file_default
             self.log.info('Update file is now: %s' % self._update_file)
-        if self._fileset: 
+        if self._fileset:
             try:
                 self._update_file.index(os.path.sep)
             except ValueError:
@@ -587,10 +585,10 @@ class GFS(LiveGrib):
     _update_file_default = 'updated.gfs'
 
     def __init__(self, *args, **kwargs):
-        if not 'filedir' in kwargs:
+        if 'filedir' not in kwargs:
             kwargs['filedir'] = appdirs.user_cache_dir('gribs')
         kwargs['fileset'] = glob.glob(kwargs['filedir'] + '/gfs*')
-        if not 'update_file' in kwargs:
+        if 'update_file' not in kwargs:
             kwargs['update_file'] = 'updated.gfs'
         super(GFS, self).__init__(*args, **kwargs)
         self.log.info('Looked for files in %s' % kwargs['filedir'])
@@ -602,13 +600,13 @@ class GEFS(LiveGrib):
     _update_file_default = 'updated.gefs'
 
     def __init__(self, *args, **kwargs):
-        if not 'filedir' in kwargs:
+        if 'filedir' not in kwargs:
             kwargs['filedir'] = appdirs.user_cache_dir('gribs')
-        if not 'set' in kwargs:
+        if 'set' not in kwargs:
             kwargs['set'] = 0
         filebase = 'gefs-%.2d-*' % kwargs['set']
         kwargs['fileset'] = glob.glob(kwargs['filedir'] + '/' + filebase)
-        if not 'update_file' in kwargs:
+        if 'update_file' not in kwargs:
             kwargs['update_file'] = 'updated.gefs'
         super(GEFS, self).__init__(*args, **kwargs)
 
@@ -619,7 +617,7 @@ class BSH(LiveGrib):
     _update_file_default = 'updated.bsh'
 
     def __init__(self, *args, **kwargs):
-        if not 'filedir' in kwargs:
+        if 'filedir' not in kwargs:
             kwargs['filedir'] = appdirs.user_cache_dir('gribs')
         kwargs['fileset'] = glob.glob(kwargs['filedir'] + self._set_pattern)
         super(BSH, self).__init__(*args, **kwargs)

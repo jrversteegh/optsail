@@ -7,12 +7,15 @@ __author__ = "J.R. Versteegh"
 __copyright__ = "2015, Orca Software"
 __contact__ = "j.r.versteegh@orca-st.com"
 __version__ = "0.1"
-__license__ = "Proprietary. All use without explicit permission forbidden"
+__license__ = "GPL"
 
 from datetime import datetime
 from dateutil import tz
 
-from .classes import Object, Logable
+import numpy as np
+
+from .classes import Logable
+
 
 class Environment(Logable):
     def get_wind(self, positions, time=None, **kwargs):

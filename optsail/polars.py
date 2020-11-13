@@ -7,19 +7,18 @@ __author__ = "J.R. Versteegh"
 __copyright__ = "2013, Orca Software"
 __contact__ = "j.r.versteegh@orca-st.com"
 __version__ = "0.1"
-__license__ = "Proprietary. All use without explicit permission forbidden"
+__license__ = "GPL"
 
 
 import os
-import math
 import numpy as np
 from scipy import interpolate
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from classes import Object, OptsailError
-from utils import *
+from classes import Object
+from utils import from_knots, from_degs, to_knots, to_degs, to_float
 
 
 class Polars(Object):
@@ -51,7 +50,7 @@ class Polars(Object):
             except KeyError:
                 wind_speeds = np.linspace(0, 50, 11)
                 wind_angles = np.linspace(0, np.pi, 19)
-                boat_speeds = np.sqrt(wind_speeds) * np.sqrt(1.3 * wind_angles[:,np.newaxis])
+                boat_speeds = np.sqrt(wind_speeds) * np.sqrt(1.3 * wind_angles[:, np.newaxis])
             self._from_data(wind_speeds, wind_angles, boat_speeds)
 
 
@@ -65,11 +64,11 @@ class Polars(Object):
         if degree is None:
             degree = 3
         if smoothing:
-            s = max(len(self._mesh[0][0,:]), len(self._mesh[1][:,0]))
+            s = max(len(self._mesh[0][0, :]), len(self._mesh[1][:, 0]))
         else:
             s = 0
         self._evaluator = interpolate.RectBivariateSpline(
-            self._mesh[1][:,0], self._mesh[0][0,:],
+            self._mesh[1][:, 0], self._mesh[0][0, :],
             self._data,
             kx=degree, ky=degree,
             s=s,
@@ -88,7 +87,7 @@ class Polars(Object):
         with open(filename, "w") as f:
             f.write('# Wind speeds\n')
             for speed in self.speeds:
-                f.write(' %.2f' % to_kns(speed))
+                f.write(' %.2f' % to_knots(speed))
             f.write('\n')
             f.write('# Wind angles\n')
             for angle in self.angles:
@@ -97,7 +96,7 @@ class Polars(Object):
             f.write('# Boat speeds\n')
             for r in self.data:
                 for c in r:
-                    f.write(' %.2f' % to_kns(c))
+                    f.write(' %.2f' % to_knots(c))
                 f.write('\n')
 
 
@@ -184,12 +183,12 @@ class Polars(Object):
 
     @property
     def wind_angles(self):
-        return self._mesh[1][:,0]
+        return self._mesh[1][:, 0]
 
 
     @property
     def wind_speeds(self):
-        return self._mesh[0][0,:]
+        return self._mesh[0][0, :]
 
 
     def get(self, angles, wind_speeds=None, squeeze=True):
@@ -205,7 +204,7 @@ class Polars(Object):
     def get_optimal_ranges(self, wind_speeds):
         angles = from_degs([d for d in range(181)])
         speeds = self.get(angles, wind_speeds, squeeze=False)
-        vmg = speeds * np.cos(angles)[:,np.newaxis]
+        vmg = speeds * np.cos(angles)[:, np.newaxis]
         vmgui = np.argmax(vmg, axis=0)
         vmgdi = np.argmin(vmg, axis=0)
         return (
@@ -227,7 +226,7 @@ class Polars(Object):
         sm.set_array(np.linspace(0., max_wind_speed, 20))
         for i, w in enumerate(self.wind_speeds):
             clr = sm.to_rgba(knot_wind_speeds[i])
-            knot_boat_speeds = to_knots(self._data[:,i])
+            knot_boat_speeds = to_knots(self._data[:, i])
             max_boat_speed = max(max_boat_speed, max(knot_boat_speeds))
             plt.plot(-self.wind_angles, knot_boat_speeds, color=clr)
         pp.set_rmax((max_boat_speed // 5 + 1) * 5)

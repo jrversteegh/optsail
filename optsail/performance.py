@@ -7,19 +7,11 @@ __author__ = "J.R. Versteegh"
 __copyright__ = "2016, Orca Software"
 __contact__ = "j.r.versteegh@orca-st.com"
 __version__ = "0.1"
-__license__ = "Proprietary. All use without explicit permission forbidden"
+__license__ = "GPL"
 
-
-import os
-import math
 import numpy as np
-from scipy import interpolate
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-
-from .classes import Object, OptsailError
-from .utils import *
+from .classes import Object
 from .polars import Polars
 
 
@@ -41,11 +33,11 @@ class Performance(Object):
 
 
     def get_optimal_ranges(self, wind_speeds):
-        upwind, downwind = zip(*[polar.get_optimal_ranges(wind_speeds) for polar in self._polars])
-        upwind = np.array(upwind)
-        downwind = np.array(downwind)
-        vmgui = np.argmax(upwind[:,1], axis=0)
-        vmgdi = np.argmin(downwind[:,1], axis=0)
+        wind = zip(*[polar.get_optimal_ranges(wind_speeds) for polar in self._polars])
+        upwind = np.array(wind[0])
+        downwind = np.array(wind[1])
+        vmgui = np.argmax(upwind[:, 1], axis=0)
+        vmgdi = np.argmin(downwind[:, 1], axis=0)
         return (
             np.vstack((upwind[vmgui][0], vmgui)),
             np.vstack((downwind[vmgdi][0], vmgdi)),
